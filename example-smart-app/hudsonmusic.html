@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Huds on Music</title>
+
+    <script>
+        window.onload = function () {
+            var context = new AudioContext();
+        }
+    </script>
+</head>
+
+<body style="overflow-x:hidden">
+    <style>
+        .spinner {
+            width: 70px;
+            text-align: center;
+        }
+
+        .spinner>div {
+            width: 18px;
+            height: 18px;
+            background-color: #00adef;
+
+            border-radius: 100%;
+            display: inline-block;
+            -webkit-animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+            animation: sk-bouncedelay 1.4s infinite ease-in-out both;
+        }
+
+        .spinner .bounce1 {
+            -webkit-animation-delay: -0.32s;
+            animation-delay: -0.32s;
+        }
+
+        .spinner .bounce2 {
+            -webkit-animation-delay: -0.16s;
+            animation-delay: -0.16s;
+        }
+
+        @-webkit-keyframes sk-bouncedelay {
+
+            0%,
+            80%,
+            100% {
+                -webkit-transform: scale(0)
+            }
+
+            40% {
+                -webkit-transform: scale(1.0)
+            }
+        }
+
+        @keyframes sk-bouncedelay {
+
+            0%,
+            80%,
+            100% {
+                -webkit-transform: scale(0);
+                transform: scale(0);
+            }
+
+            40% {
+                -webkit-transform: scale(1.0);
+                transform: scale(1.0);
+            }
+        }
+    </style>
+    <div style="width:100vw !important;height: 68vh !important;display: flex;">
+        <div id="mainVideo"
+            style="background:black;width: 72% !important;height:100% !important;margin:2% !important;justify-content: center;align-items: center;display: flex;">
+            <div class="spinner" id="mainvideospinner">
+                <div class="bounce1"></div>
+                <div class="bounce2"></div>
+                <div class="bounce3"></div>
+            </div>
+        </div>
+        <div id="sidePanel"
+            style="overflow-y: auto;overflow-x: hidden;width:20% !important;height: 100% !important;margin:2% !important;justify-content: center;align-items: center;display: flex;">
+
+        </div>
+    </div>
+    <script src="https://player.vimeo.com/api/player.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async function () {
+
+            var apiVideos = []
+            var videos = []
+
+            function onEnded(data) {
+                debugger
+                let videoIndex = document.getElementById('mainVideo').dataset.index;
+
+                if (videoIndex + 1 == apiVideos.length) {
+                    let firstVideo = apiVideos[0];
+                } else {
+                    let nextVideo = apiVideos[videoIndex + 1];
+
+                    setSideVideo(apiVideos[videoIndex], apiVideos[videoIndex + 1]);
+                    playVideo(nextVideo);
+                }
+            }
+
+            function onPlay(data) {
+                let d = data;
+                debugger
+            }
+
+            function sideVideoSpinner(videoId, color = 'black') {
+                return `<div id="video2"
+                style="margin: 1%;background-color: ${color};height: 30% !important;width:100%;display: flex;justify-content: center;align-items: center;">
+                <div class="spinner" id="${videoId}_spinner">
+                    <div class="bounce1"></div>
+                    <div class="bounce2"></div>
+                    <div class="bounce3"></div>
+                </div>
+            </div>`;
+            }
+
+            function sideVideoPlaceHolder(videoId, thumbnail) {
+                return `<div id="${videoId}"
+                style="margin: 1%;background-color: black;height: 30% !important;width:100%;display: flex;justify-content: center;align-items: center;">
+                ${sideVideoSpinner(videoId)}
+            </div>`;
+            }
+
+            function setSideVideo(video, nextVideo, index) {
+                let videoId;
+                let sideVideoId;
+
+                if (!nextVideo) {
+                    sideVideoId = video.uri.replace(/\D/g, "");
+                } else {
+                    sideVideoId = nextVideo.uri.replace(/\D/g, "");
+                    videoId = video.uri.replace(/\D/g, "");
+                }
+
+                !nextVideo && (sidePanel.innerHTML += sideVideoPlaceHolder(sideVideoId));
+
+                setTimeout(function (videoId, sideVideoId, video) {
+                    let sideVideo = document.getElementById(sideVideoId);
+                    let sideVideoSpinner = document.getElementById(`${sideVideoId}_spinner`);
+
+                    if (videoId) {
+
+                        (sideVideo.id = videoId) && (sideVideoSpinner.id = `${videoId}_spinner`)
+
+                        let sideVideoIndex = sideVideo.dataset.index;
+
+                        sideVideo.data.index = mainVideo.data.index;
+                        mainVideo.data.index = sideVideoIndex;
+                    } else {
+                        sideVideo.dataset.index = index;
+                    }
+
+                    let player = videos[videoId] && videos[videoId].player;
+
+                    if (!player) {
+                        player = new Vimeo.Player(sideVideoId, {
+                            id: sideVideoId,
+                            width: sideVideo.clientWidth,
+                            height: sideVideo.clientHeight
+                        });
+                    } else {
+                        player.element = sideVideo;
+                    }
+
+                    !videoId && (videos[sideVideoId] = {
+                        apiVideo: video,
+                        player: player
+                    });
+
+                    player.on('play', onPlay);
+
+                    sideVideoSpinner.style.display = 'none'
+                }, 1000, videoId, sideVideoId, video);
+            }
+
+            function playVideo(video) {
+                document.getElementById('mainvideospinner').style.display = 'block'
+
+                let videoId = video.uri.replace(/\D/g, "");
+                let player = videos[videoId] && videos[videoId].player;
+
+                if (!player) {
+                    player = new Vimeo.Player('mainVideo', {
+                        url: video.player_embed_url,
+                        width: video.width,
+                        height: mainVideo.clientHeight
+                    });
+
+                    mainVideo.dataset.index = 0;
+                } else {
+                    mainVideo.dataset.index = document.getElementById(videoId).dataset.index;
+                }
+
+                player.on('ended', onEnded);
+
+                videos[videoId] = {
+                    apiVideo: video,
+                    player: player
+                }
+
+                try {
+                    setTimeout(function () {
+                        console.log(player.element.contentDocument)
+                    }, 1500);
+                } catch (e) {
+                    console.log('Error while playing the video -> ', e);
+                }
+                document.getElementById('mainvideospinner').style.display = 'none';
+            }
+
+            let mainVideo = document.getElementById('mainVideo');
+            let sidePanel = document.getElementById('sidePanel');
+
+            sidePanel.innerHTML = sideVideoSpinner(0, 'none');
+
+            await fetch('https://api.vimeo.com/me/albums/5816585/videos', {
+                    method: 'get',
+                    headers: {
+                        Authorization: 'Bearer b4cbb51cbffa3e9bfce1385b0add539a'
+                    }
+                }).then(response => response.json())
+                .then(r => {
+                    apiVideos = r.data || []
+                }).
+            catch(error => {
+                console.log('Error -> ', error)
+            });
+
+            if (apiVideos.length > 0) {
+
+                try {
+                    playVideo(apiVideos[0]);
+                } catch (err) {
+                    console.log('Error -> ', err)
+                };
+
+                sidePanel.style.display = 'block'
+                sidePanel.innerHTML = ''
+
+                for (let i = 1; i < apiVideos.length; i++) {
+                    setSideVideo(apiVideos[i], undefined, i);
+                }
+            }
+        });
+    </script>
+</body>
+
+</html>
